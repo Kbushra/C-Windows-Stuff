@@ -1,7 +1,7 @@
 #pragma once
 #include <stdio.h>
-#include "../property.h"
-#include "../drawing.h"
+#include <windows.h>
+#include "../property.h";
 
 typedef struct code_object code_object;
 struct code_object

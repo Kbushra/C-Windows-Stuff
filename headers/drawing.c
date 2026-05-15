@@ -4,8 +4,10 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <windows.h>
-#include "drawing.h"
+#include "./drawing.h"
+#include "./file_reader.h";
 
 int draw_pixels(HDC display, uint32_t* pixels, int x, int y, int width, int height)
 {
@@ -32,7 +34,13 @@ int draw_pixels(HDC display, uint32_t* pixels, int x, int y, int width, int heig
     );
 }
 
-void draw_sprite_from_path(char* sprite_path, HDC display)
+void draw_sprite(HDC display, char* sprite_path, int x, int y)
 {
-    //todo
+    FILE* file = fopen(sprite_path, "r");
+    if (!file) { return; }
+
+    int width = 0;
+    int height = 0;
+    uint32_t* pixels = read_png_file(file, &width, &height);
+    draw_pixels(display, pixels, x, y, width, height);
 }

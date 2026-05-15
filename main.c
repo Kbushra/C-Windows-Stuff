@@ -2,7 +2,7 @@
 #define UNICODE
 #endif
 
-#include "./headers/assets/assets.h"
+#include "./headers/assets/room_object.h"
 
 #define HANDLE_ERROR 0
 
@@ -18,7 +18,7 @@ uint32_t pixels[WINDOW_WIDTH * WINDOW_HEIGHT/2];
 HBRUSH main_brush = NULL;
 HBRUSH dynamic_brush(COLORREF col, HBRUSH* brush)
 {
-    if (*brush != NULL)
+    if (*brush)
     {
         LOGBRUSH log_brush;
         GetObject(*brush, sizeof(log_brush), &log_brush);

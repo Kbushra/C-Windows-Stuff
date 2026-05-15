@@ -14,9 +14,6 @@
 
 #define WINDOW_WIDTH 960
 #define WINDOW_HEIGHT 720
-#define WM_DRAW (WM_USER)
-
-uint32_t pixels[WINDOW_WIDTH * WINDOW_HEIGHT/2];
 
 HBRUSH main_brush = NULL;
 HBRUSH dynamic_brush(COLORREF col, HBRUSH* brush)
@@ -34,9 +31,32 @@ HBRUSH dynamic_brush(COLORREF col, HBRUSH* brush)
     return *brush;
 }
 
+sprite_object* test = NULL;
+
 int game_loop(HWND window)
 {
-    SendMessage(window, WM_DRAW, 0, 0);
+    if (!test)
+    {
+        MessageBoxW(NULL, L"creating sprite", L"debug", MB_OK);
+        test = malloc(sizeof(sprite_object));
+        *test = default_sprite_object;
+        FILE* file = fopen("./image.png", "rb");
+        if (!file) { return 404; }
+
+        MessageBoxW(NULL, L"loading png", L"debug", MB_OK);
+        test->sprite_pixels = load_png_file(file, &(test->sprite_width), &(test->sprite_height));
+        MessageBoxW(NULL, L"SUCCESSFUL LOAD!", L"debug", MB_OK);
+
+        if (test->sprite_pixels != NULL)
+        {
+            wchar_t buff[128];
+            swprintf(buff, 128, L"pixel1 = %u", test->sprite_pixels[0]);
+            MessageBoxW(NULL, buff, L"debug", MB_OK);
+        }
+        else { MessageBoxW(NULL, L"rip", L"debug", MB_OK); }
+    }
+    
+    draw_pixels(GetDC(window), test->sprite_pixels, test->x, test->y, test->sprite_width, test->sprite_height);
     return 0;
 }
 
@@ -63,7 +83,8 @@ int WINAPI wWinMain(HINSTANCE program, HINSTANCE _, PWSTR args, int window_state
     while (TRUE)
     {
         DWORD prev_time = GetTickCount();
-        game_loop(window);
+        int errcode = game_loop(window);
+        if (errcode >= 300) { return errcode; }
 
         while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
         {
@@ -85,6 +106,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM message_arg1, LPAR
 	switch (message)
 	{
 		case WM_DESTROY:
+            free(test);
             DeleteObject(main_brush);
 			PostQuitMessage(0);
 		return 0;
@@ -103,18 +125,6 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM message_arg1, LPAR
             FillRect(display, &painter.rcPaint, dynamic_brush(RGB(0, 0, 0), &main_brush));
 			EndPaint(window, &painter);
 		return 0;
-            
-        case WM_DRAW:
-            display = GetDC(window);
-
-            for (int i = 0; i < WINDOW_WIDTH * WINDOW_HEIGHT/2; i++)
-            {
-                pixels[i] = 0xFFFFFFFF;
-            }
-
-            draw_pixels(display, pixels, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT/2);
-            ReleaseDC(window, display);
-        return 0;
 	}
 
 	return DefWindowProc(window, message, message_arg1, message_arg2);

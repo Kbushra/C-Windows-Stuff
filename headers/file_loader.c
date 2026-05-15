@@ -2,9 +2,8 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <winsock.h>
 #include <stdlib.h>
-#include "./file_reader.h"
+#include "./file_loader.h"
 
 static uint32_t crc_table[256];
 static bool generated_crc = false;
@@ -39,14 +38,26 @@ static bool valid_crc(uint8_t* buff, int len, uint32_t crc)
     return crc_output == crc;
 }
 
+static uint32_t reverse_bytes(const uint32_t n)
+{
+    uint32_t byte1 = (n & 0x000000FF) << 24;
+    uint32_t byte2 = (n & 0x0000FF00) << 8;
+    uint32_t byte3 = (n & 0x00FF0000) >> 8;
+    uint32_t byte4 = (n & 0xFF000000) >> 24;
+    return byte1 | byte2 | byte3 | byte4;
+}
+
 static uint32_t type_to_uint32(char* type)
 {
+    if (!type) { return 0; }
+
     uint32_t result = 0;
     for (int i = 0; i < 4; i++)
     {
         if (*type == 0) { return result; }
-        result += *type;
         result <<= 8;
+        result += *type;
+        type++;
     }
 
     return result;
@@ -55,7 +66,7 @@ static uint32_t type_to_uint32(char* type)
 static void read_word(uint32_t* dest, uint8_t* src, int* tracker)
 {
     memcpy(dest, src + *tracker, 4);
-    *dest = ntohl(*dest);
+    *dest = reverse_bytes(*dest);
     *tracker += 4;
 }
 
@@ -65,7 +76,7 @@ static void read_byte(uint8_t* dest, uint8_t* src, int* tracker)
     *tracker += 1;
 }
 
-uint32_t* read_png_file(FILE* file, int* result_width, int* result_height)
+uint32_t* load_png_file(FILE* file, int* result_width, int* result_height)
 {
     if (!file) { return NULL; }
 
@@ -82,7 +93,7 @@ uint32_t* read_png_file(FILE* file, int* result_width, int* result_height)
     const uint32_t idat = type_to_uint32("IDAT");
     const uint32_t ihdr = type_to_uint32("IHDR");
     const uint32_t iend = type_to_uint32("IEND");
-    const uint8_t* compressed_pixels;
+    const uint8_t* compressed_pixels = NULL;
 
     uint32_t width = 0;
     uint32_t height = 0;
@@ -94,12 +105,14 @@ uint32_t* read_png_file(FILE* file, int* result_width, int* result_height)
     {
         uint32_t chunk_len = 0;
         if (fread(&chunk_len, 4, 1, file) < 1) { return NULL; }
+        chunk_len = reverse_bytes(chunk_len);
 
         uint32_t chunk_type = 0;
         if (fread(&chunk_type, 4, 1, file) < 1) { return NULL; }
+        chunk_type = reverse_bytes(chunk_type);
 
         uint8_t* chunk_data = malloc(chunk_len);
-        if (fread(&chunk_data, 1, chunk_len, file) < 1) { return NULL; }
+        if (fread(chunk_data, 1, chunk_len, file) < chunk_len) { return NULL; }
         //ancillary, private, reserved, safe-to-copy chunk properties not checked
 
         if (chunk_type == ihdr)
@@ -117,15 +130,26 @@ uint32_t* read_png_file(FILE* file, int* result_width, int* result_height)
 
         uint32_t chunk_crc = 0;
         if (fread(&chunk_crc, 4, 1, file) < 1) { return NULL; }
-        uint8_t* crc_buffer = malloc(4 + chunk_len);
-        memcpy(crc_buffer, (void*)chunk_type, 4);
-        memcpy(crc_buffer + 4, (void*)chunk_data, chunk_len);
 
+        uint8_t* crc_buffer = malloc(4 + chunk_len);
+        memcpy(crc_buffer, (void*)&chunk_type, 4);
+        memcpy(crc_buffer + 4, (void*)chunk_data, chunk_len);
+        if (!valid_crc(crc_buffer, 4 + chunk_len, chunk_crc)) { return NULL; }
+
+        free(crc_buffer);
         free(chunk_data);
         if (chunk_type == iend) { break; }
     }
 
+    //debug
+    *result_width = 1000;
+    *result_height = 1000;
+    uint32_t* pixels = malloc(*result_width * *result_height * sizeof(uint32_t));
+    for (int i = 0; i < *result_width; i++)
+    { for (int j = 0; j < *result_height; j++) { pixels[i * (*result_height)+j] = 0xFFFFFFFF; } }
+    return pixels;
+
     if (result_width) { *result_width = width; }
     if (result_height) { *result_height = height; }
-    return NULL;
+    return NULL; //temp
 }

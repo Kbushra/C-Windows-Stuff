@@ -5,6 +5,7 @@
 #pragma once
 #include <stdint.h>
 #include <windows.h>
+#include "../file_loader.h"
 #include "../drawing.h"
 #include "../property.h"
 
@@ -15,7 +16,6 @@ struct code_object
     int y;
     int sprite_width;
     int sprite_height;
-    char* sprite_path;
     uint32_t* sprite_pixels;
     property* props;
     

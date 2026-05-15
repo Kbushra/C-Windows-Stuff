@@ -7,10 +7,11 @@
 #include <stdbool.h>
 #include <windows.h>
 #include "./drawing.h"
-#include "./file_reader.h"
 
 int draw_pixels(HDC display, uint32_t* pixels, int x, int y, int width, int height)
 {
+    if (!pixels) { return 0; }
+
     BITMAPINFO bitmap =
     {
         .bmiHeader =

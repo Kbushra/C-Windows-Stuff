@@ -1,5 +1,4 @@
 #pragma once
-#include <stdio.h>
 
 typedef struct property property;
 struct property

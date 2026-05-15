@@ -1,5 +1,4 @@
 #pragma once
-#include <stdio.h>
 #include "./code_object.h"
 #include "./sprite_object.h"
 

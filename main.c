@@ -2,6 +2,9 @@
 #define UNICODE
 #endif
 
+#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
 #include "./headers/assets/room_object.h"
 
 #define HANDLE_ERROR 0

@@ -1,7 +1,10 @@
 #include <stdio.h>
+#include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include "./file_reader.h";
+#include <winsock.h>
+#include <stdlib.h>
+#include "./file_reader.h"
 
 static uint32_t crc_table[256];
 static bool generated_crc = false;
@@ -59,21 +62,21 @@ static void read_word(uint32_t* dest, uint8_t* src, int* tracker)
 static void read_byte(uint8_t* dest, uint8_t* src, int* tracker)
 {
     memcpy(dest, src + *tracker, 1);
-    *tracker++;
+    *tracker += 1;
 }
 
 uint32_t* read_png_file(FILE* file, int* result_width, int* result_height)
 {
-    if (!file) { return; }
+    if (!file) { return NULL; }
 
     const int signature_len = 8;
     uint8_t signature[signature_len];
-    if (fread(signature, 1, signature_len, file) < signature_len) { return; }
+    if (fread(signature, 1, signature_len, file) < signature_len) { return NULL; }
     
     const uint8_t png_signature[] = {137, 80, 78, 71, 13, 10, 26, 10};
     for (int i = 0; i < signature_len; i++)
     {
-        if (signature[i] != png_signature[i]) { return; }
+        if (signature[i] != png_signature[i]) { return NULL; }
     }
 
     const uint32_t idat = type_to_uint32("IDAT");
@@ -90,13 +93,13 @@ uint32_t* read_png_file(FILE* file, int* result_width, int* result_height)
     while (true)
     {
         uint32_t chunk_len = 0;
-        if (fread(&chunk_len, 4, 1, file) < 1) { return; }
+        if (fread(&chunk_len, 4, 1, file) < 1) { return NULL; }
 
         uint32_t chunk_type = 0;
-        if (fread(&chunk_type, 4, 1, file) < 1) { return; }
+        if (fread(&chunk_type, 4, 1, file) < 1) { return NULL; }
 
         uint8_t* chunk_data = malloc(chunk_len);
-        if (fread(&chunk_data, 1, chunk_len, file) < 1) { return; }
+        if (fread(&chunk_data, 1, chunk_len, file) < 1) { return NULL; }
         //ancillary, private, reserved, safe-to-copy chunk properties not checked
 
         if (chunk_type == ihdr)
@@ -112,12 +115,17 @@ uint32_t* read_png_file(FILE* file, int* result_width, int* result_height)
             compressed_pixels = malloc(width * height);
         }
 
+        uint32_t chunk_crc = 0;
+        if (fread(&chunk_crc, 4, 1, file) < 1) { return NULL; }
+        uint8_t* crc_buffer = malloc(4 + chunk_len);
+        memcpy(crc_buffer, (void*)chunk_type, 4);
+        memcpy(crc_buffer + 4, (void*)chunk_data, chunk_len);
+
         free(chunk_data);
         if (chunk_type == iend) { break; }
     }
 
-    free(compressed_pixels);
-
-    *result_width = width;
-    *result_height = height;
+    if (result_width) { *result_width = width; }
+    if (result_height) { *result_height = height; }
+    return NULL;
 }

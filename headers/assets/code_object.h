@@ -1,14 +1,22 @@
+#ifndef UNICODE
+#define UNICODE
+#endif
+
 #pragma once
-#include <stdio.h>
+#include <stdint.h>
 #include <windows.h>
-#include "../property.h";
+#include "../drawing.h"
+#include "../property.h"
 
 typedef struct code_object code_object;
 struct code_object
 {
     int x;
     int y;
+    int sprite_width;
+    int sprite_height;
     char* sprite_path;
+    uint32_t* sprite_pixels;
     property* props;
     
     void (*create)(code_object* self);

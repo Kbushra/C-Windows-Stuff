@@ -3,7 +3,7 @@
 #endif
 
 #pragma once
-#include <stdio.h>
+#include "../drawing.h"
 #include <windows.h>
 
 typedef struct sprite_object sprite_object;
@@ -14,4 +14,4 @@ struct sprite_object
     char* sprite_path;
 };
 
-extern void draw_sprite_object_sprite(sprite_object* self, HDC display);
+extern sprite_object default_sprite_object;

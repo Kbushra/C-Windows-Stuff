@@ -137,9 +137,13 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM message_arg1, LPAR
             RECT client;
             GetClientRect(window, &client);
             FillRect(display, &client, dynamic_brush(RGB(0, 0, 0), &main_brush));
-            for (int i = 0; i < SPRITE_COUNT; i++)
+
+            if (test != NULL)
             {
-                draw_pixels(display, test[i]->sprite_pixels, test[i]->x, test[i]->y, test[i]->sprite_width, test[i]->sprite_height);
+                for (int i = 0; i < SPRITE_COUNT; i++)
+                {
+                    draw_pixels(display, test[i]->sprite_pixels, test[i]->x, test[i]->y, test[i]->sprite_width, test[i]->sprite_height);
+                }
             }
 
 			EndPaint(window, &painter);

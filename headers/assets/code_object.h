@@ -5,7 +5,6 @@
 #pragma once
 #include <stdint.h>
 #include <windows.h>
-#include "../file_loader.h"
 #include "../drawing.h"
 #include "../property.h"
 

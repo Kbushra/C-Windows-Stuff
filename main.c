@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include "./headers/debug.h"
+#include "./headers/file_loader.h"
 #include "./headers/assets/room_object.h"
 
 #define HANDLE_ERROR 0
@@ -31,33 +33,33 @@ HBRUSH dynamic_brush(COLORREF col, HBRUSH* brush)
     return *brush;
 }
 
-sprite_object* test = NULL;
+#define SPRITE_COUNT 4
+sprite_object** test = NULL;
 
 int game_loop(HWND window)
 {
     if (!test)
     {
-        MessageBoxW(NULL, L"creating sprite", L"debug", MB_OK);
-        test = malloc(sizeof(sprite_object));
-        *test = default_sprite_object;
+        test = malloc(4 * sizeof(sprite_object*));
         FILE* file = fopen("./image.png", "rb");
         if (!file) { return 404; }
 
-        MessageBoxW(NULL, L"loading png", L"debug", MB_OK);
-        test->sprite_pixels = load_png_file(file, &(test->sprite_width), &(test->sprite_height));
-        MessageBoxW(NULL, L"SUCCESSFUL LOAD!", L"debug", MB_OK);
-
-        if (test->sprite_pixels != NULL)
+        for (int i = 0; i < SPRITE_COUNT; i++)
         {
-            wchar_t buff[128];
-            swprintf(buff, 128, L"pixel1 = %u", test->sprite_pixels[0]);
-            MessageBoxW(NULL, buff, L"debug", MB_OK);
+            test[i] = malloc(sizeof(sprite_object));
+            if (!test[i]) { return 507; }
+            
+            *(test[i]) = default_sprite_object;
+            test[i]->x = i * 60;
+            test[i]->y = i * 40;
+            test[i]->sprite_pixels = load_png_file(file, &(test[i]->sprite_width), &(test[i]->sprite_height));
         }
-        else { MessageBoxW(NULL, L"rip", L"debug", MB_OK); }
+
+        fclose(file);
     }
     
-    draw_pixels(GetDC(window), test->sprite_pixels, test->x, test->y, test->sprite_width, test->sprite_height);
-    return 0;
+    PostMessage(window, WM_PAINT, 0, 0);
+    return 200;
 }
 
 LRESULT CALLBACK WindowProc(HWND window, UINT action, WPARAM action_arg1, LPARAM action_arg2);
@@ -84,7 +86,7 @@ int WINAPI wWinMain(HINSTANCE program, HINSTANCE _, PWSTR args, int window_state
     {
         DWORD prev_time = GetTickCount();
         int errcode = game_loop(window);
-        if (errcode >= 300) { return errcode; }
+        if (errcode >= 300) { PostMessage(window, WM_QUIT, 0, 0); }
 
         while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
         {
@@ -92,7 +94,11 @@ int WINAPI wWinMain(HINSTANCE program, HINSTANCE _, PWSTR args, int window_state
             DispatchMessage(&msg);
         }
 
-        if (msg.message == WM_QUIT) { break; }
+        if (msg.message == WM_QUIT)
+        {
+            if (errcode >= 300) { show_message(L"error: %d", errcode); }
+            return errcode;
+        }
 
         DWORD elapsed_time = GetTickCount() - prev_time;
         if (elapsed_time < FRAME_TIME) { Sleep(FRAME_TIME - elapsed_time); }
@@ -106,6 +112,11 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM message_arg1, LPAR
 	switch (message)
 	{
 		case WM_DESTROY:
+            for (int i = 0; i < SPRITE_COUNT; i++)
+            {
+                free(test[i]);
+                test[i] = NULL;
+            }
             free(test);
             DeleteObject(main_brush);
 			PostQuitMessage(0);
@@ -122,7 +133,15 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM message_arg1, LPAR
 		case WM_PAINT:
             PAINTSTRUCT painter;
 			display = BeginPaint(window, &painter);
-            FillRect(display, &painter.rcPaint, dynamic_brush(RGB(0, 0, 0), &main_brush));
+
+            RECT client;
+            GetClientRect(window, &client);
+            FillRect(display, &client, dynamic_brush(RGB(0, 0, 0), &main_brush));
+            for (int i = 0; i < SPRITE_COUNT; i++)
+            {
+                draw_pixels(display, test[i]->sprite_pixels, test[i]->x, test[i]->y, test[i]->sprite_width, test[i]->sprite_height);
+            }
+
 			EndPaint(window, &painter);
 		return 0;
 	}

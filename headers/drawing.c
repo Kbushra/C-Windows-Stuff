@@ -12,19 +12,14 @@ int draw_pixels(HDC display, uint32_t* pixels, int x, int y, int width, int heig
 {
     if (!pixels) { return 0; }
 
-    BITMAPINFO bitmap =
-    {
-        .bmiHeader =
-        {
-            sizeof(BITMAPINFOHEADER),
-            width,
-            -height,
-            1,
-            sizeof(uint32_t) * 8,
-            BI_RGB
-        }
-    };
-
+    BITMAPINFO bitmap = {0};
+    bitmap.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bitmap.bmiHeader.biWidth = width;
+    bitmap.bmiHeader.biHeight = -height;
+    bitmap.bmiHeader.biPlanes = 1;
+    bitmap.bmiHeader.biBitCount = 8 * sizeof(uint32_t);
+    bitmap.bmiHeader.biCompression = BI_RGB;
+    
     return StretchDIBits
     (
         display,

@@ -5,5 +5,6 @@
 #include <stdbool.h>
 #include <winsock.h>
 #include <stdlib.h>
+#include "./debug.h"
 
 extern uint32_t* load_png_file(FILE* file, int* result_width, int* result_height);

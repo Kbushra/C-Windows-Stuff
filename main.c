@@ -17,6 +17,16 @@
 #define WINDOW_WIDTH 960
 #define WINDOW_HEIGHT 720
 
+LONG WINAPI crash_handler(EXCEPTION_POINTERS* info)
+{
+    FILE* report = fopen("./report.log", "w");
+    fprintf(report, "Encountered exception code %08lX\n", info->ExceptionRecord->ExceptionCode);
+    fprintf(report, "At address %p\n", info->ExceptionRecord->ExceptionAddress);
+    fprintf(report, "Flags: %08lX\n", info->ExceptionRecord->ExceptionFlags);
+    fclose(report);
+    return EXCEPTION_EXECUTE_HANDLER;
+}
+
 HBRUSH main_brush = NULL;
 HBRUSH dynamic_brush(COLORREF col, HBRUSH* brush)
 {
@@ -40,9 +50,8 @@ int game_loop(HWND window)
 {
     if (!test)
     {
-        test = malloc(4 * sizeof(sprite_object*));
-        FILE* file = fopen("./image.png", "rb");
-        if (!file) { return 404; }
+        test = calloc(SPRITE_COUNT, sizeof(sprite_object*));
+        if (!test) { return 507; }
 
         for (int i = 0; i < SPRITE_COUNT; i++)
         {
@@ -52,9 +61,11 @@ int game_loop(HWND window)
             *(test[i]) = default_sprite_object;
             test[i]->x = i * 60;
             test[i]->y = i * 40;
-            test[i]->sprite_pixels = load_png_file(file, &(test[i]->sprite_width), &(test[i]->sprite_height));
         }
 
+        FILE* file = fopen("./images/main.png", "rb");
+        if (!file) { return 404; }
+        test[0]->sprite_pixels = load_png_file(file, &(test[0]->sprite_width), &(test[0]->sprite_height));
         fclose(file);
     }
     
@@ -65,6 +76,8 @@ int game_loop(HWND window)
 LRESULT CALLBACK WindowProc(HWND window, UINT action, WPARAM action_arg1, LPARAM action_arg2);
 int WINAPI wWinMain(HINSTANCE program, HINSTANCE _, PWSTR args, int window_state)
 {
+    SetUnhandledExceptionFilter(crash_handler);
+
 	const wchar_t class_name[] = L"Class";
 	WNDCLASS window_class = {};
 	window_class.lpfnWndProc = WindowProc;
@@ -86,7 +99,7 @@ int WINAPI wWinMain(HINSTANCE program, HINSTANCE _, PWSTR args, int window_state
     {
         DWORD prev_time = GetTickCount();
         int errcode = game_loop(window);
-        if (errcode >= 300) { PostMessage(window, WM_QUIT, 0, 0); }
+        if (errcode >= 300) { PostMessage(window, WM_QUIT, errcode, 0); }
 
         while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
         {
@@ -96,7 +109,6 @@ int WINAPI wWinMain(HINSTANCE program, HINSTANCE _, PWSTR args, int window_state
 
         if (msg.message == WM_QUIT)
         {
-            if (errcode >= 300) { show_message(L"error: %d", errcode); }
             return errcode;
         }
 
@@ -108,6 +120,8 @@ int WINAPI wWinMain(HINSTANCE program, HINSTANCE _, PWSTR args, int window_state
 LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM message_arg1, LPARAM message_arg2)
 {
     HDC display;
+    PAINTSTRUCT painter;
+    RECT client;
 
 	switch (message)
 	{
@@ -118,8 +132,12 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM message_arg1, LPAR
                 test[i] = NULL;
             }
             free(test);
+            test = NULL;
             DeleteObject(main_brush);
-			PostQuitMessage(0);
+
+            //Error code
+            if (message_arg1 < 300) { message_arg1 = 0; }
+			PostQuitMessage(message_arg1);
 		return 0;
 
         case WM_SETCURSOR:
@@ -131,17 +149,16 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM message_arg1, LPAR
         break;
 
 		case WM_PAINT:
-            PAINTSTRUCT painter;
 			display = BeginPaint(window, &painter);
 
-            RECT client;
             GetClientRect(window, &client);
             FillRect(display, &client, dynamic_brush(RGB(0, 0, 0), &main_brush));
 
-            if (test != NULL)
+            if (test)
             {
                 for (int i = 0; i < SPRITE_COUNT; i++)
                 {
+                    if (!test[i]) { continue; }
                     draw_pixels(display, test[i]->sprite_pixels, test[i]->x, test[i]->y, test[i]->sprite_width, test[i]->sprite_height);
                 }
             }

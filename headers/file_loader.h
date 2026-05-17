@@ -3,7 +3,6 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <winsock.h>
 #include <stdlib.h>
 #include <zlib.h>
 #include <math.h>
